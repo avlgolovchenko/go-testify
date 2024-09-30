@@ -1,58 +1,83 @@
 package main
 
 import (
-    "net/http"
-    "net/http/httptest"
-    "strconv"
-    "strings"
-    "testing"
+	"net/http"
+	"net/http/httptest"
+	"strconv"
+	"strings"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var cafeList = map[string][]string{
-    "moscow": []string{"Мир кофе", "Сладкоежка", "Кофе и завтраки", "Сытый студент"},
+	"moscow": {"Мир кофе", "Сладкоежка", "Кофе и завтраки", "Сытый студент"},
 }
 
 func mainHandle(w http.ResponseWriter, req *http.Request) {
-    countStr := req.URL.Query().Get("count")
-    if countStr == "" {
-        w.WriteHeader(http.StatusBadRequest)
-        w.Write([]byte("count missing"))
-        return
-    }
+	countStr := req.URL.Query().Get("count")
+	if countStr == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("count missing"))
+		return
+	}
 
-    count, err := strconv.Atoi(countStr)
-    if err != nil {
-        w.WriteHeader(http.StatusBadRequest)
-        w.Write([]byte("wrong count value"))
-        return
-    }
+	count, err := strconv.Atoi(countStr)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("wrong count value"))
+		return
+	}
 
-    city := req.URL.Query().Get("city")
+	city := req.URL.Query().Get("city")
 
-    cafe, ok := cafeList[city]
-    if !ok {
-        w.WriteHeader(http.StatusBadRequest)
-        w.Write([]byte("wrong city value"))
-        return
-    }
+	cafe, ok := cafeList[city]
+	if !ok {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("wrong city value"))
+		return
+	}
 
-    if count > len(cafe) {
-        count = len(cafe)
-    }
+	if count > len(cafe) {
+		count = len(cafe)
+	}
 
-    answer := strings.Join(cafe[:count], ",")
+	answer := strings.Join(cafe[:count], ",")
 
-    w.WriteHeader(http.StatusOK)
-    w.Write([]byte(answer))
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(answer))
 }
 
 func TestMainHandlerWhenCountMoreThanTotal(t *testing.T) {
-    totalCount := 4
-    req := ... // здесь нужно создать запрос к сервису
+	totalCount := 4
+	handler := http.HandlerFunc(mainHandle)
 
-    responseRecorder := httptest.NewRecorder()
-    handler := http.HandlerFunc(mainHandle)
-    handler.ServeHTTP(responseRecorder, req)
+	// Test 1: Correct request, service returns 200 and response body is not empty
+	req := httptest.NewRequest("GET", "/cafe?count=2&city=moscow", nil)
+	responseRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(responseRecorder, req)
 
-    // здесь нужно добавить необходимые проверки
+	require.Equal(t, http.StatusOK, responseRecorder.Code, "Expected status code 200")
+	assert.NotEmpty(t, responseRecorder.Body.String(), "Response body should not be empty")
+
+	// Test 2: Unsupported city, service returns 400 and error message
+	req = httptest.NewRequest("GET", "/cafe?count=2&city=unknowncity", nil)
+	responseRecorder = httptest.NewRecorder()
+	handler.ServeHTTP(responseRecorder, req)
+
+	require.Equal(t, http.StatusBadRequest, responseRecorder.Code, "Expected status code 400")
+	assert.Equal(t, "wrong city value", responseRecorder.Body.String(), "Expected error message 'wrong city value'")
+
+	// Test 3: Count more than total, should return all available cafes
+	req = httptest.NewRequest("GET", "/cafe?count=10&city=moscow", nil)
+	responseRecorder = httptest.NewRecorder()
+	handler.ServeHTTP(responseRecorder, req)
+
+	require.Equal(t, http.StatusOK, responseRecorder.Code, "Expected status code 200")
+
+	body := responseRecorder.Body.String()
+	list := strings.Split(body, ",")
+
+	assert.Len(t, list, totalCount, "Expected cafe count %d, got %d", totalCount, len(list))
 }
