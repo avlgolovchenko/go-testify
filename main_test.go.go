@@ -49,7 +49,7 @@ func mainHandle(w http.ResponseWriter, req *http.Request) {
 	w.Write([]byte(answer))
 }
 
-func TestMainHandler_Success(t *testing.T) {
+func TestMainHandlerSuccess(t *testing.T) {
 	handler := http.HandlerFunc(mainHandle)
 	req := httptest.NewRequest("GET", "/cafe?count=2&city=moscow", nil)
 	responseRecorder := httptest.NewRecorder()
@@ -59,7 +59,7 @@ func TestMainHandler_Success(t *testing.T) {
 	assert.NotEmpty(t, responseRecorder.Body.String(), "Response body should not be empty")
 }
 
-func TestMainHandler_UnsupportedCity(t *testing.T) {
+func TestMainHandlerUnsupportedCity(t *testing.T) {
 	handler := http.HandlerFunc(mainHandle)
 	req := httptest.NewRequest("GET", "/cafe?count=2&city=unknowncity", nil)
 	responseRecorder := httptest.NewRecorder()
