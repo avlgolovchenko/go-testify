@@ -49,26 +49,31 @@ func mainHandle(w http.ResponseWriter, req *http.Request) {
 	w.Write([]byte(answer))
 }
 
-func TestMainHandlerWhenCountMoreThanTotal(t *testing.T) {
-	totalCount := 4
+func TestMainHandler_Success(t *testing.T) {
 	handler := http.HandlerFunc(mainHandle)
-
 	req := httptest.NewRequest("GET", "/cafe?count=2&city=moscow", nil)
 	responseRecorder := httptest.NewRecorder()
 	handler.ServeHTTP(responseRecorder, req)
 
 	require.Equal(t, http.StatusOK, responseRecorder.Code, "Expected status code 200")
 	assert.NotEmpty(t, responseRecorder.Body.String(), "Response body should not be empty")
+}
 
-	req = httptest.NewRequest("GET", "/cafe?count=2&city=unknowncity", nil)
-	responseRecorder = httptest.NewRecorder()
+func TestMainHandler_UnsupportedCity(t *testing.T) {
+	handler := http.HandlerFunc(mainHandle)
+	req := httptest.NewRequest("GET", "/cafe?count=2&city=unknowncity", nil)
+	responseRecorder := httptest.NewRecorder()
 	handler.ServeHTTP(responseRecorder, req)
 
 	require.Equal(t, http.StatusBadRequest, responseRecorder.Code, "Expected status code 400")
 	assert.Equal(t, "wrong city value", responseRecorder.Body.String(), "Expected error message 'wrong city value'")
+}
 
-	req = httptest.NewRequest("GET", "/cafe?count=10&city=moscow", nil)
-	responseRecorder = httptest.NewRecorder()
+func TestMainHandlerWhenCountMoreThanTotal(t *testing.T) {
+	totalCount := 4
+	handler := http.HandlerFunc(mainHandle)
+	req := httptest.NewRequest("GET", "/cafe?count=10&city=moscow", nil)
+	responseRecorder := httptest.NewRecorder()
 	handler.ServeHTTP(responseRecorder, req)
 
 	require.Equal(t, http.StatusOK, responseRecorder.Code, "Expected status code 200")
